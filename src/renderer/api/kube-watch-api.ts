@@ -6,7 +6,7 @@ import type { ClusterContext } from "../components/context";
 
 import plimit from "p-limit";
 import { comparer, IReactionDisposer, observable, reaction, when } from "mobx";
-import { autobind, noop } from "../utils";
+import { asTuple, autobind, noop } from "../utils";
 import { KubeApi } from "./kube-api";
 import { KubeJsonApiData } from "./kube-json-api";
 import { isDebugging, isProduction } from "../../common/vars";
@@ -95,7 +95,7 @@ export class KubeWatchApi {
          * react to the changing of "allPossibleNamespaces" so that adding
          * accessibleNamespaces means that this is restarted
          */
-        return [this.context?.isAllPossibleNamespaces(namespaces), namespaces] as const;
+        return asTuple([this.context?.isAllPossibleNamespaces(namespaces), namespaces]);
       }, ([, namespaces]) => {
         preloading?.cancelLoading();
         unsubscribeList.forEach(unsubscribe => unsubscribe());

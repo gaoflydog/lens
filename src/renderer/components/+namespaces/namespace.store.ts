@@ -35,6 +35,13 @@ export class NamespaceStore extends KubeObjectStore<Namespace> {
 
   @observable private rawSelectedNamespaces = observable.set<string>();
 
+  /**
+   * @depreated use `NamespaceStore.rawSelectedNamespaces` instead
+   */
+  get contextNs() {
+    return this.rawSelectedNamespaces;
+  }
+
   constructor() {
     super();
     this.init();
@@ -91,6 +98,16 @@ export class NamespaceStore extends KubeObjectStore<Namespace> {
     return [];
   }
 
+  /**
+   * @deprecated use `NamespaceStore.allowedNamespaces` instead
+   */
+  get contextNamespaces() {
+    return this.allowedNamespaces;
+  }
+
+  /**
+   * The array of namespace names that this store knows about
+   */
   @computed get allowedNamespaces(): string[] {
     return Array.from(new Set([
       ...(this.context?.allNamespaces ?? []), // allowed namespaces from cluster (main), updating every 30s
@@ -146,7 +163,7 @@ export class NamespaceStore extends KubeObjectStore<Namespace> {
     return this.context?.isAllPossibleNamespaces(Array.from(this.rawSelectedNamespaces), true) ?? false;
   }
 
-  @computed private get hasAllContexts(): boolean {
+  @computed get hasAllContexts(): boolean {
     return this.rawSelectedNamespaces.size === this.allowedNamespaces.length;
   }
 
