@@ -1,12 +1,13 @@
-import { getExtensionPageUrl, globalPageRegistry, PageParams } from "../page-registry";
-import { LensExtension } from "../../lens-extension";
+import { getExtensionPageUrl, PageParams } from "../page-registry";
 import React from "react";
+import { LensRendererExtension } from "../../core-api";
+import { findRegisteredPage, PageRegistration } from "..";
 
-let ext: LensExtension = null;
+let ext: LensRendererExtension = null;
 
 describe("getPageUrl", () => {
   beforeEach(async () => {
-    ext = new LensExtension({
+    ext = new LensRendererExtension({
       manifest: {
         name: "foo-bar",
         version: "0.1.1"
@@ -17,7 +18,7 @@ describe("getPageUrl", () => {
       isBundled: false,
       isEnabled: true
     });
-    globalPageRegistry.add({
+    (ext.globalPages as PageRegistration[]).push({
       id: "page-with-params",
       components: {
         Page: () => React.createElement("Page with params")
@@ -26,39 +27,39 @@ describe("getPageUrl", () => {
         test1: "test1-default",
         test2: "" // no default value, just declaration
       },
-    }, ext);
+    });
   });
 
   it("returns a page url for extension", () => {
-    expect(getExtensionPageUrl({ extensionId: ext.name })).toBe("/extension/foo-bar");
+    expect(getExtensionPageUrl({ extensionName: ext.name })).toBe("/extension/foo-bar");
   });
 
   it("allows to pass base url as parameter", () => {
-    expect(getExtensionPageUrl({ extensionId: ext.name, pageId: "/test" })).toBe("/extension/foo-bar/test");
+    expect(getExtensionPageUrl({ extensionName: ext.name, pageId: "/test" })).toBe("/extension/foo-bar/test");
   });
 
   it("removes @ and replace `/` to `--`", () => {
-    expect(getExtensionPageUrl({ extensionId: "@foo/bar" })).toBe("/extension/foo--bar");
+    expect(getExtensionPageUrl({ extensionName: "@foo/bar" })).toBe("/extension/foo--bar");
   });
 
   it("adds / prefix", () => {
-    expect(getExtensionPageUrl({ extensionId: ext.name, pageId: "test" })).toBe("/extension/foo-bar/test");
+    expect(getExtensionPageUrl({ extensionName: ext.name, pageId: "test" })).toBe("/extension/foo-bar/test");
   });
 
   it("normalize possible multi-slashes in page.id", () => {
-    expect(getExtensionPageUrl({ extensionId: ext.name, pageId: "//test/" })).toBe("/extension/foo-bar/test");
+    expect(getExtensionPageUrl({ extensionName: ext.name, pageId: "//test/" })).toBe("/extension/foo-bar/test");
   });
 
   it("gets page url with custom params", () => {
     const params: PageParams<string> = { test1: "one", test2: "2" };
     const searchParams = new URLSearchParams(params);
-    const pageUrl = getExtensionPageUrl({ extensionId: ext.name, pageId: "page-with-params", params });
+    const pageUrl = getExtensionPageUrl({ extensionName: ext.name, pageId: "page-with-params", params });
 
     expect(pageUrl).toBe(`/extension/foo-bar/page-with-params?${searchParams}`);
   });
 
   it("gets page url with default custom params", () => {
-    const defaultPageUrl = getExtensionPageUrl({ extensionId: ext.name, pageId: "page-with-params", });
+    const defaultPageUrl = getExtensionPageUrl({ extensionName: ext.name, pageId: "page-with-params", });
 
     expect(defaultPageUrl).toBe(`/extension/foo-bar/page-with-params?test1=test1-default`);
   });
@@ -66,7 +67,7 @@ describe("getPageUrl", () => {
 
 describe("globalPageRegistry", () => {
   beforeEach(async () => {
-    ext = new LensExtension({
+    ext = new LensRendererExtension({
       manifest: {
         name: "@acme/foo-bar",
         version: "0.1.1"
@@ -77,7 +78,7 @@ describe("globalPageRegistry", () => {
       isBundled: false,
       isEnabled: true
     });
-    globalPageRegistry.add([
+    (ext.globalPages as PageRegistration[]).push(
       {
         id: "test-page",
         components: {
@@ -95,32 +96,26 @@ describe("globalPageRegistry", () => {
           Page: () => React.createElement("Default")
         }
       },
-    ], ext);
+    );
   });
 
-  describe("getByPageTarget", () => {
+  describe("findRegisteredPage", () => {
     it("matching to first registered page without id", () => {
-      const page = globalPageRegistry.getByPageTarget({ extensionId: ext.name });
+      const page = findRegisteredPage(ext);
 
       expect(page.id).toEqual(undefined);
-      expect(page.extensionId).toEqual(ext.name);
-      expect(page.url).toEqual(getExtensionPageUrl({ extensionId: ext.name }));
+      expect(page.extensionName).toEqual(ext.name);
+      expect(page.url).toEqual(getExtensionPageUrl({ extensionName: ext.name }));
     });
 
     it("returns matching page", () => {
-      const page = globalPageRegistry.getByPageTarget({
-        pageId: "test-page",
-        extensionId: ext.name
-      });
+      const page = findRegisteredPage(ext, "test-page");
 
       expect(page.id).toEqual("test-page");
     });
 
     it("returns null if target not found", () => {
-      const page = globalPageRegistry.getByPageTarget({
-        pageId: "wrong-page",
-        extensionId: ext.name
-      });
+      const page = findRegisteredPage(ext, "wrong-page");
 
       expect(page).toBeNull();
     });
